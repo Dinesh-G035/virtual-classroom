@@ -1,76 +1,38 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { videoAPI, feedbackAPI } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { videoAPI } from '../../services/api';
 import { useToast } from '../../components/common/Toast';
 import VideoPlayer from '../../components/video/VideoPlayer';
-import FeedbackForm from '../../components/feedback/FeedbackForm';
-import FeedbackList from '../../components/feedback/FeedbackList';
-import { FiArrowLeft, FiUser, FiEye, FiClock, FiTag } from 'react-icons/fi';
+import { FiArrowLeft, FiUser, FiEye, FiClock, FiTag, FiBarChart2 } from 'react-icons/fi';
 
-const WatchVideo = () => {
+const WatchVideoTeacher = () => {
   const { videoId } = useParams();
-  const { user } = useAuth();
   const toast = useToast();
   const [video, setVideo] = useState(null);
   const [captions, setCaptions] = useState([]);
-  const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [videoRes, feedbackRes, captionsRes] = await Promise.all([
+        const [videoRes, captionsRes] = await Promise.all([
           videoAPI.getOne(videoId),
-          feedbackAPI.getForVideo(videoId),
           videoAPI.getCaptions(videoId).catch(() => null),
         ]);
-        setVideo(videoRes.data.data);
-        setFeedbacks(feedbackRes.data.data);
 
+        setVideo(videoRes.data.data);
         const cap = captionsRes?.data?.data?.captions;
         if (Array.isArray(cap)) setCaptions(cap);
-
-        // Check if current user already submitted feedback
-        const existing = feedbackRes.data.data.find(
-          (f) => f.student?._id === user?._id
-        );
-        if (existing) setHasSubmitted(true);
       } catch (err) {
-        console.error('Watch video error:', err);
+        console.error('Teacher watch video error:', err);
         toast.error('Failed to load video');
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, [videoId]);
-
-  const handleSubmitFeedback = async (feedbackData) => {
-    setSubmitting(true);
-    try {
-      const res = await feedbackAPI.submit({
-        videoId,
-        ...feedbackData,
-      });
-
-      // Add new feedback to list
-      const newFeedback = {
-        ...res.data.data.feedback,
-        aiResponse: res.data.data.aiResponse,
-      };
-      setFeedbacks([newFeedback, ...feedbacks]);
-      setHasSubmitted(true);
-
-      toast.success('Feedback submitted! AI has analyzed your response. 🤖');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit feedback');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const formatDuration = (seconds) => {
     if (!seconds) return '0:00';
@@ -93,12 +55,11 @@ const WatchVideo = () => {
     return (
       <div className="page-container text-center">
         <p className="text-surface-400">Video not found.</p>
-        <Link to="/student" className="btn-primary inline-flex mt-4">Go Back</Link>
+        <Link to="/teacher/my-videos" className="btn-primary inline-flex mt-4">Go Back</Link>
       </div>
     );
   }
 
-  // Build video stream URL with token as query param (video element can't send auth headers)
   const token = localStorage.getItem('authToken');
   const streamUrl = video.filePath ? `/api/videos/stream/${videoId}?token=${token}` : null;
 
@@ -110,16 +71,24 @@ const WatchVideo = () => {
 
   return (
     <div className="page-container max-w-5xl">
-      {/* Back */}
-      <Link
-        to="/student"
-        className="inline-flex items-center gap-2 text-surface-400 hover:text-white text-sm font-medium mb-4 transition-colors"
-      >
-        <FiArrowLeft className="w-4 h-4" />
-        Back to Videos
-      </Link>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <Link
+          to="/teacher/my-videos"
+          className="inline-flex items-center gap-2 text-surface-400 hover:text-white text-sm font-medium transition-colors"
+        >
+          <FiArrowLeft className="w-4 h-4" />
+          Back to My Videos
+        </Link>
 
-      {/* Video Player */}
+        <Link
+          to={`/teacher/video/${videoId}`}
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors"
+        >
+          <FiBarChart2 className="w-4 h-4" />
+          Analytics
+        </Link>
+      </div>
+
       <VideoPlayer
         videoUrl={streamUrl}
         subtitles={video.subtitles}
@@ -128,7 +97,6 @@ const WatchVideo = () => {
         title={video.title}
       />
 
-      {/* Video Info */}
       <div className="mt-6 mb-8">
         <h1 className="text-2xl font-display font-bold text-white mb-3">{video.title}</h1>
 
@@ -155,7 +123,6 @@ const WatchVideo = () => {
           </div>
         )}
 
-        {/* Tags */}
         {video.tags && video.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {video.tags.map((tag, i) => (
@@ -170,28 +137,9 @@ const WatchVideo = () => {
           </div>
         )}
       </div>
-
-      {/* Feedback section */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Form */}
-        <div className="lg:col-span-2">
-          <FeedbackForm
-            onSubmit={handleSubmitFeedback}
-            loading={submitting}
-            disabled={hasSubmitted}
-          />
-        </div>
-
-        {/* Feedback list */}
-        <div className="lg:col-span-3">
-          <h3 className="text-lg font-display font-semibold text-white mb-4">
-            Student Feedback ({feedbacks.length})
-          </h3>
-          <FeedbackList feedbacks={feedbacks} showAIReplies={true} />
-        </div>
-      </div>
     </div>
   );
 };
 
-export default WatchVideo;
+export default WatchVideoTeacher;
+

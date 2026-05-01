@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { aiAPI, feedbackAPI } from '../../services/api';
-import { FiArrowLeft, FiStar, FiTrendingUp, FiMessageSquare, FiAlertCircle } from 'react-icons/fi';
+import { aiAPI, feedbackAPI, videoAPI } from '../../services/api';
+import { useToast } from '../../components/common/Toast';
+import { FiArrowLeft, FiStar, FiTrendingUp, FiMessageSquare, FiAlertCircle, FiPlay, FiUploadCloud, FiLink, FiRefreshCw } from 'react-icons/fi';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import FeedbackList from '../../components/feedback/FeedbackList';
 
@@ -10,19 +11,34 @@ const RATING_COLORS = ['#ef4444', '#f59e0b', '#eab308', '#22c55e', '#10b981'];
 
 const VideoAnalytics = () => {
   const { videoId } = useParams();
+  const toast = useToast();
   const [insights, setInsights] = useState(null);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generatingCaptions, setGeneratingCaptions] = useState(false);
+  const [savingAccessibility, setSavingAccessibility] = useState(false);
+  const [uploadingInterpreter, setUploadingInterpreter] = useState(false);
+  const [signInterpreterInput, setSignInterpreterInput] = useState('');
+  const [signLanguageUrlInput, setSignLanguageUrlInput] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [insightsRes, feedbackRes] = await Promise.all([
+        const [insightsRes, feedbackRes, videoRes] = await Promise.all([
           aiAPI.getInsights(videoId),
           feedbackAPI.getForVideo(videoId),
+          videoAPI.getOne(videoId).catch(() => null),
         ]);
         setInsights(insightsRes.data.data);
         setFeedbacks(feedbackRes.data.data);
+
+        const v = videoRes?.data?.data;
+        if (v) {
+          setVideo(v);
+          setSignLanguageUrlInput(v.signLanguageUrl || '');
+          setSignInterpreterInput(/^https?:\/\//i.test(v.signLanguageInterpreter || '') ? v.signLanguageInterpreter : '');
+        }
       } catch (err) {
         console.error('Analytics fetch error:', err);
       } finally {
@@ -31,6 +47,80 @@ const VideoAnalytics = () => {
     };
     fetchData();
   }, [videoId]);
+
+  const handleGenerateCaptions = async () => {
+    setGeneratingCaptions(true);
+    try {
+      const res = await videoAPI.generateCaptions(videoId, 'auto');
+      const provider = res.data?.data?.provider;
+      const cap = res.data?.data?.captions;
+      setVideo((prev) =>
+        prev
+          ? {
+              ...prev,
+              captionsGenerated: true,
+              captionProvider: provider || prev.captionProvider,
+              captions: Array.isArray(cap) ? cap : prev.captions,
+            }
+          : prev
+      );
+      toast.success('Captions generated');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to generate captions');
+    } finally {
+      setGeneratingCaptions(false);
+    }
+  };
+
+  const handleSaveAccessibility = async () => {
+    setSavingAccessibility(true);
+    try {
+      const payload = {
+        signLanguageUrl: signLanguageUrlInput,
+        ...(signInterpreterInput ? { signLanguageInterpreter: signInterpreterInput } : {}),
+      };
+      const res = await videoAPI.updateSignInterpreter(videoId, payload);
+      const updated = res.data?.data;
+      setVideo((prev) =>
+        prev
+          ? {
+              ...prev,
+              signLanguageInterpreter: updated?.signLanguageInterpreter ?? prev.signLanguageInterpreter,
+              signLanguageUrl: updated?.signLanguageUrl ?? prev.signLanguageUrl,
+            }
+          : prev
+      );
+      toast.success('Accessibility settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save accessibility settings');
+    } finally {
+      setSavingAccessibility(false);
+    }
+  };
+
+  const handleUploadInterpreter = async (file) => {
+    if (!file) return;
+    setUploadingInterpreter(true);
+    try {
+      const res = await videoAPI.uploadSignInterpreter(videoId, file);
+      const updated = res.data?.data;
+      setVideo((prev) =>
+        prev
+          ? {
+              ...prev,
+              signLanguageInterpreter: updated?.signLanguageInterpreter ?? prev.signLanguageInterpreter,
+              signLanguageUrl: updated?.signLanguageUrl ?? prev.signLanguageUrl,
+            }
+          : prev
+      );
+      setSignInterpreterInput('');
+      toast.success('Interpreter video uploaded');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Interpreter upload failed');
+    } finally {
+      setUploadingInterpreter(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -93,6 +183,106 @@ const VideoAnalytics = () => {
       <h1 className="section-title">
         <span className="gradient-text">AI Analytics</span> Dashboard
       </h1>
+
+      {/* Accessibility */}
+      <div className="glass-card p-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div>
+            <h2 className="text-lg font-display font-semibold text-white">Accessibility</h2>
+            <p className="text-xs text-surface-400 mt-1">Auto captions + sign language interpreter overlay</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              to={`/teacher/watch/${videoId}`}
+              className="btn-primary text-xs px-3 py-2 inline-flex items-center gap-2"
+            >
+              <FiPlay className="w-4 h-4" />
+              Preview
+            </Link>
+            <button
+              onClick={handleGenerateCaptions}
+              disabled={generatingCaptions}
+              className="px-3 py-2 text-xs font-semibold rounded-xl border border-primary-500/30 bg-primary-500/10 text-primary-300 hover:bg-primary-500/15 transition-colors inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <FiRefreshCw className={`w-4 h-4 ${generatingCaptions ? 'animate-spin' : ''}`} />
+              Generate Captions
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl bg-surface-800/40 border border-white/5">
+            <h3 className="text-sm font-semibold text-white mb-3">Captions</h3>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-surface-400">
+              <span className={`px-2 py-1 rounded-lg border ${video?.captionsGenerated ? 'border-accent-green/30 bg-accent-green/10 text-accent-green' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'}`}>
+                {video?.captionsGenerated ? 'Generated' : 'Not generated'}
+              </span>
+              <span>Provider: <span className="text-white/80">{video?.captionProvider || 'none'}</span></span>
+              <span>Count: <span className="text-white/80">{Array.isArray(video?.captions) ? video.captions.length : 0}</span></span>
+            </div>
+            <p className="text-xs text-surface-500 mt-3">
+              Tip: captions are generated automatically on upload; use this button to re-generate.
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-surface-800/40 border border-white/5">
+            <h3 className="text-sm font-semibold text-white mb-3">Sign Interpreter</h3>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] text-surface-400 font-semibold uppercase tracking-wider">
+                  <FiLink className="inline w-3.5 h-3.5 mr-1" />
+                  Interpreter Video URL (optional)
+                </label>
+                <input
+                  value={signInterpreterInput}
+                  onChange={(e) => setSignInterpreterInput(e.target.value)}
+                  className="input-field mt-1"
+                  placeholder="https://... (leave empty if you upload a file)"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] text-surface-400 font-semibold uppercase tracking-wider">
+                  Reference Link (optional)
+                </label>
+                <input
+                  value={signLanguageUrlInput}
+                  onChange={(e) => setSignLanguageUrlInput(e.target.value)}
+                  className="input-field mt-1"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <label className="px-3 py-2 text-xs font-semibold rounded-xl border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 transition-colors inline-flex items-center gap-2 cursor-pointer">
+                  <FiUploadCloud className="w-4 h-4" />
+                  {uploadingInterpreter ? 'Uploading...' : 'Upload Interpreter Video'}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    onChange={(e) => handleUploadInterpreter(e.target.files?.[0])}
+                    disabled={uploadingInterpreter}
+                  />
+                </label>
+
+                <button
+                  onClick={handleSaveAccessibility}
+                  disabled={savingAccessibility}
+                  className="btn-primary text-xs px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+
+              <p className="text-xs text-surface-500">
+                Current: <span className="text-white/70">{video?.signLanguageInterpreter ? 'Set' : 'Not set'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Top stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -13,6 +13,7 @@ import UploadVideo from './pages/teacher/UploadVideo';
 import MyVideos from './pages/teacher/MyVideos';
 import VideoAnalytics from './pages/teacher/VideoAnalytics';
 import TeacherAnalyticsIndex from './pages/teacher/TeacherAnalyticsIndex';
+import WatchVideoTeacher from './pages/teacher/WatchVideo';
 
 // Student pages
 import StudentDashboard from './pages/student/StudentDashboard';
@@ -102,6 +103,7 @@ function App() {
               <Route path="/teacher/my-videos" element={<MyVideos />} />
               <Route path="/teacher/analytics" element={<TeacherAnalyticsIndex />} />
               <Route path="/teacher/video/:videoId" element={<VideoAnalytics />} />
+              <Route path="/teacher/watch/:videoId" element={<WatchVideoTeacher />} />
             </Route>
 
             {/* Student routes */}

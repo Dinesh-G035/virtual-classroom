@@ -37,9 +37,30 @@ const videoSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    captions: [
+      {
+        startTime: Number, // Start time in seconds
+        endTime: Number, // End time in seconds
+        text: String, // Caption text
+        speaker: String, // Optional: speaker name
+      },
+    ],
     signLanguageUrl: {
       type: String,
       default: '',
+    },
+    signLanguageInterpreter: {
+      type: String,
+      default: '', // URL to sign language interpreter video
+    },
+    captionsGenerated: {
+      type: Boolean,
+      default: false,
+    },
+    captionProvider: {
+      type: String,
+      enum: ['openai', 'google', 'mock', 'manual', 'none'],
+      default: 'none',
     },
     teacher: {
       type: mongoose.Schema.Types.ObjectId,

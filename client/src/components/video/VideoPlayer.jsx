@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { FiMaximize, FiMinimize, FiVolume2, FiVolumeX, FiAirplay } from 'react-icons/fi';
 
-const VideoPlayer = ({ videoUrl, subtitles, title }) => {
+const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, title }) => {
   const videoRef = useRef(null);
+  const signVideoRef = useRef(null);
   const containerRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -12,10 +13,28 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const hasCaptions = Array.isArray(captions) && captions.length > 0;
+  const hasSignInterpreter = Boolean(signInterpreterUrl);
+
   const formatTime = (time) => {
     const m = Math.floor(time / 60);
     const s = Math.floor(time % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const findCaptionTextAtTime = (t) => {
+    if (!hasCaptions) return null;
+    let lo = 0;
+    let hi = captions.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const c = captions[mid];
+      if (!c) return null;
+      if (t < c.startTime) hi = mid - 1;
+      else if (t >= c.endTime) lo = mid + 1;
+      else return c.text;
+    }
+    return null;
   };
 
   const togglePlay = () => {
@@ -31,7 +50,16 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+      const t = videoRef.current.currentTime;
+      setCurrentTime(t);
+
+      // Keep sign interpreter video roughly synced
+      if (showSignLanguage && hasSignInterpreter && signVideoRef.current) {
+        const drift = Math.abs(signVideoRef.current.currentTime - t);
+        if (drift > 0.45) {
+          signVideoRef.current.currentTime = t;
+        }
+      }
     }
   };
 
@@ -45,7 +73,11 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = (e.clientX - rect.left) / rect.width;
     if (videoRef.current) {
-      videoRef.current.currentTime = percent * duration;
+      const nextTime = percent * duration;
+      videoRef.current.currentTime = nextTime;
+      if (showSignLanguage && hasSignInterpreter && signVideoRef.current) {
+        signVideoRef.current.currentTime = nextTime;
+      }
     }
   };
 
@@ -66,7 +98,27 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
     }
   };
 
+  useEffect(() => {
+    if (!showSignLanguage || !hasSignInterpreter) return;
+    if (!videoRef.current || !signVideoRef.current) return;
+
+    // Align interpreter track when enabled
+    try {
+      signVideoRef.current.currentTime = videoRef.current.currentTime || 0;
+      signVideoRef.current.muted = true;
+      if (!signVideoRef.current.paused && !isPlaying) {
+        signVideoRef.current.pause();
+      }
+      if (isPlaying) {
+        signVideoRef.current.play().catch(() => {});
+      }
+    } catch {
+      // ignore sync errors
+    }
+  }, [showSignLanguage, hasSignInterpreter, isPlaying]);
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const activeCaptionText = showSubtitles ? (findCaptionTextAtTime(currentTime) || (!hasCaptions ? subtitles : null)) : null;
 
   return (
     <div ref={containerRef} className="relative rounded-2xl overflow-hidden bg-black group shadow-2xl">
@@ -79,6 +131,21 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
           onLoadedMetadata={handleLoadedMetadata}
           onClick={togglePlay}
           onEnded={() => setIsPlaying(false)}
+          onPlay={() => {
+            setIsPlaying(true);
+            if (showSignLanguage && hasSignInterpreter && signVideoRef.current) {
+              signVideoRef.current.play().catch(() => {});
+            }
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            if (signVideoRef.current) signVideoRef.current.pause();
+          }}
+          onSeeked={() => {
+            if (showSignLanguage && hasSignInterpreter && signVideoRef.current && videoRef.current) {
+              signVideoRef.current.currentTime = videoRef.current.currentTime;
+            }
+          }}
         >
           <source src={videoUrl} type="video/mp4" />
           Your browser does not support the video tag.
@@ -96,25 +163,34 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
       )}
 
       {/* Subtitles overlay */}
-      {showSubtitles && subtitles && (
+      {activeCaptionText && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 max-w-[85%] z-10 transition-all pointer-events-none">
-          <p className="px-4 py-2 bg-black/80 backdrop-blur-md rounded-xl text-white text-sm md:text-base text-center border border-white/10 shadow-lg">
-            {subtitles}
-          </p>
+          <div className="px-3 py-1.5 md:px-4 md:py-2 bg-black/70 rounded-md md:rounded-lg border border-white/10 shadow-lg backdrop-blur-sm">
+            <p
+              className="text-white text-sm md:text-lg font-semibold text-center leading-snug"
+              style={{
+                textShadow:
+                  '0 1px 2px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.75)',
+              }}
+            >
+              {activeCaptionText}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Sign Language Interpreter Overlay */}
-      {showSignLanguage && (
+      {showSignLanguage && hasSignInterpreter && (
         <div className="absolute top-4 right-4 w-32 h-32 md:w-48 md:h-48 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl animate-scale-in z-20 glass-card">
-          <div className="w-full h-full bg-surface-900 flex items-center justify-center">
-             <img 
-              src="/sign_language_interpreter.png" 
-              alt="Sign Language Interpreter" 
-              className="w-full h-full object-cover"
-              onError={(e) => { e.target.src = "https://ui-avatars.com/api/?name=SL&background=6366f1&color=fff"; }}
-            />
-          </div>
+          <video
+            ref={signVideoRef}
+            className="w-full h-full object-cover bg-black"
+            muted
+            playsInline
+            preload="metadata"
+          >
+            <source src={signInterpreterUrl} />
+          </video>
           <div className="absolute bottom-0 left-0 right-0 bg-primary-500/80 backdrop-blur-sm py-1 px-2">
             <p className="text-[10px] text-white font-bold text-center uppercase tracking-wider">Interpreter</p>
           </div>
@@ -165,9 +241,15 @@ const VideoPlayer = ({ videoUrl, subtitles, title }) => {
           <div className="flex items-center gap-4">
             {/* Sign Language toggle */}
             <button
-              onClick={() => setShowSignLanguage(!showSignLanguage)}
+              onClick={() => {
+                if (!hasSignInterpreter) return;
+                setShowSignLanguage(!showSignLanguage);
+              }}
+              disabled={!hasSignInterpreter}
               className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border-2 transition-all duration-300 ${
-                showSignLanguage
+                !hasSignInterpreter
+                  ? 'border-white/10 text-white/20 cursor-not-allowed'
+                  : showSignLanguage
                   ? 'bg-accent-cyan/20 border-accent-cyan/50 text-accent-cyan shadow-[0_0_15px_rgba(34,211,238,0.3)]'
                   : 'border-white/20 text-white/50 hover:text-white hover:border-white/40'
               }`}

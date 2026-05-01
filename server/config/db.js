@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const path = require('path');
+const fs = require('fs');
 
 let mongod = null;
 
@@ -21,7 +23,15 @@ const connectDB = async () => {
       }
 
       // Start memory server
-      mongod = await MongoMemoryServer.create();
+      const downloadDir =
+        process.env.MONGOMS_DOWNLOAD_DIR || path.join(__dirname, '..', '.cache', 'mongodb-binaries');
+
+      // Ensure cache dir is writable (some environments block user-home cache dirs)
+      fs.mkdirSync(downloadDir, { recursive: true });
+
+      mongod = await MongoMemoryServer.create({
+        binary: { downloadDir },
+      });
       dbUrl = mongod.getUri();
       console.log('🚀 In-Memory MongoDB Started');
     }

@@ -2,14 +2,17 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { videoAPI } from '../../services/api';
 import { useToast } from '../../components/common/Toast';
-import { FiUploadCloud, FiX, FiFile, FiTag, FiAlignLeft, FiType } from 'react-icons/fi';
+import { FiUploadCloud, FiX, FiFile, FiTag, FiAlignLeft, FiType, FiLink } from 'react-icons/fi';
 
 const UploadVideo = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     subtitles: '',
+    signLanguageInterpreter: '',
+    signLanguageUrl: '',
     tags: '',
+    autoCaptions: true,
   });
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -20,7 +23,8 @@ const UploadVideo = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, type, checked, value } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
   };
 
   const handleFileDrop = (e) => {
@@ -65,7 +69,10 @@ const UploadVideo = () => {
       data.append('title', formData.title);
       data.append('description', formData.description);
       data.append('subtitles', formData.subtitles);
+      data.append('signLanguageInterpreter', formData.signLanguageInterpreter);
+      data.append('signLanguageUrl', formData.signLanguageUrl);
       data.append('tags', formData.tags);
+      data.append('autoCaptions', String(formData.autoCaptions));
 
       // Simulate progress since axios onUploadProgress needs special config
       const progressInterval = setInterval(() => {
@@ -208,6 +215,57 @@ const UploadVideo = () => {
             placeholder="Add subtitle text for accessibility..."
           />
           <p className="text-xs text-surface-500 mt-1">Adding subtitles makes your content accessible to all students</p>
+        </div>
+
+        {/* Auto captions */}
+        <div className="flex items-center justify-between gap-4 glass-card p-4">
+          <div>
+            <p className="text-sm font-semibold text-white">Auto-generate captions</p>
+            <p className="text-xs text-surface-500 mt-0.5">Creates timed captions automatically on upload</p>
+          </div>
+          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              name="autoCaptions"
+              checked={formData.autoCaptions}
+              onChange={handleChange}
+              className="w-4 h-4 accent-primary-500"
+            />
+            <span className="text-sm text-surface-300">Enable</span>
+          </label>
+        </div>
+
+        {/* Sign interpreter */}
+        <div>
+          <label className="input-label" htmlFor="upload-sign-url">
+            <FiLink className="inline w-4 h-4 mr-1" />
+            Sign Interpreter Video URL (optional)
+          </label>
+          <input
+            id="upload-sign-url"
+            name="signLanguageInterpreter"
+            value={formData.signLanguageInterpreter}
+            onChange={handleChange}
+            className="input-field"
+            placeholder="https://..."
+          />
+          <p className="text-xs text-surface-500 mt-1">You can also upload an interpreter video later from Analytics → Accessibility</p>
+        </div>
+
+        {/* Sign reference */}
+        <div>
+          <label className="input-label" htmlFor="upload-sign-ref">
+            <FiLink className="inline w-4 h-4 mr-1" />
+            Sign Reference Link (optional)
+          </label>
+          <input
+            id="upload-sign-ref"
+            name="signLanguageUrl"
+            value={formData.signLanguageUrl}
+            onChange={handleChange}
+            className="input-field"
+            placeholder="https://..."
+          />
         </div>
 
         {/* Tags */}

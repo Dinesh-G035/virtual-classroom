@@ -64,9 +64,26 @@ export const videoAPI = {
   getOne: (id) => request(`/videos/${id}`),
   getMyVideos: () => request('/videos/teacher/my-videos'),
   delete: (id) => request(`/videos/${id}`, { method: 'DELETE' }),
+  getCaptions: (id) => request(`/videos/${id}/captions`),
+  generateCaptions: (id, provider = 'auto') =>
+    request(`/videos/${id}/generate-captions`, {
+      method: 'POST',
+      body: JSON.stringify({ provider }),
+    }),
+  updateSignInterpreter: (id, data) =>
+    request(`/videos/${id}/sign-interpreter`, { method: 'PUT', body: JSON.stringify(data) }),
+  uploadSignInterpreter: (id, file) => {
+    const data = new FormData();
+    data.append('interpreter', file);
+    return request(`/videos/${id}/sign-interpreter/upload`, { method: 'PUT', body: data });
+  },
   getStreamUrl: (id) => {
     const token = localStorage.getItem('authToken');
     return `/api/videos/stream/${id}?token=${token}`;
+  },
+  getSignInterpreterStreamUrl: (id) => {
+    const token = localStorage.getItem('authToken');
+    return `/api/videos/${id}/sign-interpreter/stream?token=${token}`;
   },
 };
 
