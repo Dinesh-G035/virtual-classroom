@@ -5,7 +5,7 @@ const sentiment = new Sentiment();
  * Analyze the sentiment of a given text
  * Uses AFINN-165 wordlist and Emoji Sentiment Ranking
  * @param {string} text - The feedback text to analyze
- * @returns {object} - { sentiment, score, comparative, keywords }
+ * @returns {object} - { sentiment, score, comparative, keywords } (keyword detection)
  */
 const analyzeSentiment = (text) => {
   if (!text || typeof text !== 'string') {
@@ -27,12 +27,12 @@ const analyzeSentiment = (text) => {
     sentimentLabel = 'negative';
   }
 
-  // Extract meaningful keywords (words that contributed to sentiment)
+  // Keyword detection: words that contributed to sentiment
   const positiveWords = result.positive || [];
   const negativeWords = result.negative || [];
   const allSentimentWords = [...positiveWords, ...negativeWords];
 
-  // Also extract domain-specific keywords
+  // Keyword detection: domain-specific categories
   const domainKeywords = extractDomainKeywords(text);
   const allKeywords = [...new Set([...allSentimentWords, ...domainKeywords])];
 
@@ -47,7 +47,7 @@ const analyzeSentiment = (text) => {
 };
 
 /**
- * Extract domain-specific keywords related to education/lectures
+ * Detect domain-specific keywords related to education/lectures
  * @param {string} text
  * @returns {string[]}
  */

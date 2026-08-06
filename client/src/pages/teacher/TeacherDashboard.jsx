@@ -157,7 +157,7 @@ const TeacherDashboard = () => {
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-white">View Analytics</h3>
-            <p className="text-xs text-surface-400 mt-0.5">AI-powered insights from feedback</p>
+            <p className="text-xs text-surface-400 mt-0.5">Rule-based sentiment analysis insights from feedback</p>
           </div>
           <FiArrowRight className="w-5 h-5 text-surface-500 group-hover:text-primary-400 group-hover:translate-x-1 transition-all" />
         </Link>

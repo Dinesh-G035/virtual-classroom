@@ -1,7 +1,7 @@
 /**
- * Smart Reply Generator
- * Generates contextual AI replies to student feedback based on
- * keyword matching, sentiment, and pattern recognition.
+ * Automated Reply Suggestion Generator
+ * Generates contextual automated reply suggestions to student feedback based on
+ * keyword detection, sentiment, and pattern matching.
  */
 
 // Pattern-based reply rules (ordered by specificity)

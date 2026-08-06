@@ -60,8 +60,7 @@ const WatchVideoTeacher = () => {
     );
   }
 
-  const token = localStorage.getItem('authToken');
-  const streamUrl = video.filePath ? `/api/videos/stream/${videoId}?token=${token}` : null;
+  const streamUrl = video?.filePath ? videoAPI.getStreamUrl(videoId) : null;
 
   const signInterpreterUrl = (() => {
     if (!video.signLanguageInterpreter) return null;
@@ -142,4 +141,3 @@ const WatchVideoTeacher = () => {
 };
 
 export default WatchVideoTeacher;
-

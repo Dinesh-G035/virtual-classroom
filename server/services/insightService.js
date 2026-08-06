@@ -28,7 +28,7 @@ const generateVideoInsights = async (videoId) => {
     };
   }
 
-  // Get AI responses for all feedbacks
+  // Get analysis results for all feedbacks
   const feedbackIds = feedbacks.map((f) => f._id);
   const aiResponses = await AIResponse.find({ feedback: { $in: feedbackIds } });
 
@@ -56,13 +56,13 @@ const generateVideoInsights = async (videoId) => {
     }
   });
 
-  // Sentiment distribution from AI responses
+  // Sentiment distribution from analysis results
   const sentimentDistribution = { positive: 0, negative: 0, neutral: 0 };
   aiResponses.forEach((ar) => {
     sentimentDistribution[ar.sentiment] = (sentimentDistribution[ar.sentiment] || 0) + 1;
   });
 
-  // Batch analyze all comments for keywords
+  // Keyword detection across all comments
   const comments = feedbacks.map((f) => f.comment);
   const batchResult = batchAnalyze(comments);
 
@@ -92,7 +92,7 @@ const generateVideoInsights = async (videoId) => {
       : 50;
   const satisfactionScore = Math.round(ratingScore * 0.6 + sentimentScore * 0.4);
 
-  // Recent feedback with AI responses
+  // Recent feedback with analysis results
   const recentFeedback = feedbacks.slice(0, 10).map((f) => {
     const aiResp = aiResponseMap[f._id.toString()];
     return {

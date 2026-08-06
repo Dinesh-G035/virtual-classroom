@@ -12,9 +12,11 @@ const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, t
   const [showSignLanguage, setShowSignLanguage] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const [signSrc, setSignSrc] = useState(null);
 
   const hasCaptions = Array.isArray(captions) && captions.length > 0;
-  const hasSignInterpreter = Boolean(signInterpreterUrl);
+  const hasSignInterpreter = Boolean(signSrc);
 
   const formatTime = (time) => {
     const m = Math.floor(time / 60);
@@ -99,6 +101,88 @@ const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, t
   };
 
   useEffect(() => {
+    if (!videoUrl) {
+      setVideoSrc(null);
+      return;
+    }
+
+    // External URLs can be used directly.
+    if (/^https?:\/\//i.test(videoUrl)) {
+      setVideoSrc(videoUrl);
+      return;
+    }
+
+    let objectUrl = null;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch(videoUrl, {
+          signal: controller.signal,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`Video request failed (${res.status})`);
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setVideoSrc(objectUrl);
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        console.error('Failed to load video blob:', err);
+        setVideoSrc(null);
+      }
+    };
+
+    load();
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [videoUrl]);
+
+  useEffect(() => {
+    if (!signInterpreterUrl) {
+      setSignSrc(null);
+      return;
+    }
+
+    // External interpreter URLs can be used directly.
+    if (/^https?:\/\//i.test(signInterpreterUrl)) {
+      setSignSrc(signInterpreterUrl);
+      return;
+    }
+
+    let objectUrl = null;
+    const controller = new AbortController();
+
+    const load = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const res = await fetch(signInterpreterUrl, {
+          signal: controller.signal,
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`Interpreter request failed (${res.status})`);
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setSignSrc(objectUrl);
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        console.error('Failed to load interpreter blob:', err);
+        setSignSrc(null);
+      }
+    };
+
+    load();
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [signInterpreterUrl]);
+
+  useEffect(() => {
     if (!showSignLanguage || !hasSignInterpreter) return;
     if (!videoRef.current || !signVideoRef.current) return;
 
@@ -123,7 +207,7 @@ const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, t
   return (
     <div ref={containerRef} className="relative rounded-2xl overflow-hidden bg-black group shadow-2xl">
       {/* Video element */}
-      {videoUrl ? (
+      {videoSrc ? (
         <video
           ref={videoRef}
           className="w-full aspect-video bg-black cursor-pointer"
@@ -147,7 +231,7 @@ const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, t
             }
           }}
         >
-          <source src={videoUrl} type="video/mp4" />
+          <source src={videoSrc} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
       ) : (
@@ -189,7 +273,7 @@ const VideoPlayer = ({ videoUrl, subtitles, captions = [], signInterpreterUrl, t
             playsInline
             preload="metadata"
           >
-            <source src={signInterpreterUrl} />
+            <source src={signSrc} />
           </video>
           <div className="absolute bottom-0 left-0 right-0 bg-primary-500/80 backdrop-blur-sm py-1 px-2">
             <p className="text-[10px] text-white font-bold text-center uppercase tracking-wider">Interpreter</p>

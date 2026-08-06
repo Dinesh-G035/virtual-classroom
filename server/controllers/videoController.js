@@ -28,7 +28,7 @@ const uploadVideo = async (req, res) => {
       tags: tags ? tags.split(',').map((t) => t.trim()) : [],
     });
 
-    // Auto-generate captions by default (disable with autoCaptions=false)
+    // Auto-captions by default (disable with autoCaptions=false)
     const autoCaptions = String(req.body.autoCaptions ?? 'true').toLowerCase() !== 'false';
     if (autoCaptions) {
       try {

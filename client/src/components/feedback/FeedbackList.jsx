@@ -81,12 +81,12 @@ const FeedbackList = ({ feedbacks, showAIReplies = true }) => {
               {feedback.comment}
             </p>
 
-            {/* AI Reply */}
+            {/* Automated Reply Suggestion */}
             {showAIReplies && feedback.aiResponse?.reply && (
               <div className="mt-3 p-3 rounded-xl bg-primary-500/5 border border-primary-500/15">
                 <div className="flex items-center gap-2 mb-1.5">
                   <FiCpu className="w-3.5 h-3.5 text-primary-400" />
-                  <span className="text-xs font-semibold text-primary-400">AI Response</span>
+                  <span className="text-xs font-semibold text-primary-400">Automated Reply Suggestion</span>
                 </div>
                 <p className="text-sm text-surface-300 leading-relaxed">
                   {feedback.aiResponse.reply}

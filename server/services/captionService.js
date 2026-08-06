@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Caption Service - Handles automatic caption generation
- * Supports multiple providers: OpenAI Whisper, Google Speech-to-Text, or manual
+ * Caption Service - Handles auto-captions
+ * Sources: provided subtitle text (preferred), optional Whisper transcription, or mock/demo captions.
  */
 
 class CaptionService {
@@ -122,15 +122,52 @@ class CaptionService {
         return this.generateMockCaptions(videoPath);
       }
 
-      // Import OpenAI SDK (you'll need to install it: npm install openai)
-      // const OpenAI = require('openai');
-      // const openai = new OpenAI({ apiKey });
+      const fileBlob = await fs.openAsBlob(videoPath);
+      const form = new FormData();
+      form.append('file', fileBlob, path.basename(videoPath));
+      form.append('model', 'whisper-1');
+      form.append('response_format', 'verbose_json');
 
-      // For now, return mock data since openai package isn't installed
-      console.log('OpenAI Whisper integration requires npm install openai');
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: form,
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message =
+          payload?.error?.message ||
+          (typeof payload === 'string' ? payload : null) ||
+          `OpenAI Whisper request failed (${response.status})`;
+        throw new Error(message);
+      }
+
+      const segments = Array.isArray(payload?.segments) ? payload.segments : [];
+      if (segments.length > 0) {
+        const captions = segments
+          .map((s) => ({
+            startTime: typeof s.start === 'number' ? s.start : Number(s.start || 0),
+            endTime: typeof s.end === 'number' ? s.end : Number(s.end || 0),
+            text: String(s.text || '').trim(),
+            speaker: 'Speaker',
+          }))
+          .filter((c) => Number.isFinite(c.startTime) && Number.isFinite(c.endTime) && c.endTime > c.startTime && c.text);
+
+        if (captions.length > 0) return captions;
+      }
+
+      // Fallback: if segments are missing, build approximate timing from the transcript text.
+      if (payload?.text) {
+        return this.captionsFromPlainText(payload.text);
+      }
+
+      console.warn('OpenAI Whisper returned no transcript segments, falling back to mock captions');
       return this.generateMockCaptions(videoPath);
     } catch (error) {
-      console.error('OpenAI API error:', error);
+      console.error('OpenAI Whisper error:', error?.message || error);
       return this.generateMockCaptions(videoPath);
     }
   }

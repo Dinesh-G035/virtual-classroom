@@ -4,6 +4,8 @@ import { videoAPI } from '../../services/api';
 import { useToast } from '../../components/common/Toast';
 import { FiUploadCloud, FiX, FiFile, FiTag, FiAlignLeft, FiType, FiLink } from 'react-icons/fi';
 
+const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
+
 const UploadVideo = () => {
   const [formData, setFormData] = useState({
     title: '',
@@ -22,6 +24,29 @@ const UploadVideo = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  const formatFileSize = (bytes) => {
+    if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
+    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(2)} MB`;
+    return `${(bytes / 1024).toFixed(2)} KB`;
+  };
+
+  const validateAndSetFile = (nextFile) => {
+    if (!nextFile || !nextFile.type?.startsWith('video/')) {
+      toast.error('Please upload a valid video file');
+      setFile(null);
+      return;
+    }
+
+    if (nextFile.size > MAX_UPLOAD_BYTES) {
+      toast.error('File too large. Maximum upload size is 500MB.');
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setFile(nextFile);
+  };
+
   const handleChange = (e) => {
     const { name, type, checked, value } = e.target;
     setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
@@ -31,28 +56,22 @@ const UploadVideo = () => {
     e.preventDefault();
     setDragOver(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type.startsWith('video/')) {
-      setFile(droppedFile);
-    } else {
-      toast.error('Please upload a valid video file');
-    }
+    validateAndSetFile(droppedFile);
   };
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) setFile(selectedFile);
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
-    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(2)} MB`;
-    return `${(bytes / 1024).toFixed(2)} KB`;
+    if (selectedFile) validateAndSetFile(selectedFile);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!file) {
       toast.warning('Please select a video file');
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error('File too large. Maximum upload size is 500MB.');
       return;
     }
     if (!formData.title.trim()) {
@@ -131,8 +150,10 @@ const UploadVideo = () => {
           {file ? (
             <div className="animate-scale-in">
               <FiFile className="w-12 h-12 text-accent-green mx-auto mb-3" />
-              <p className="text-sm font-semibold text-white">{file.name}</p>
-              <p className="text-xs text-surface-400 mt-1">{formatFileSize(file.size)}</p>
+              <p className="text-sm font-semibold text-white flex items-center justify-center gap-2">
+                <span className="truncate max-w-[26rem]">{file.name}</span>
+                <span className="text-xs text-surface-400 font-mono">{formatFileSize(file.size)}</span>
+              </p>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setFile(null); }}
@@ -220,7 +241,7 @@ const UploadVideo = () => {
         {/* Auto captions */}
         <div className="flex items-center justify-between gap-4 glass-card p-4">
           <div>
-            <p className="text-sm font-semibold text-white">Auto-generate captions</p>
+            <p className="text-sm font-semibold text-white">Auto-captions (from provided subtitle text)</p>
             <p className="text-xs text-surface-500 mt-0.5">Creates timed captions automatically on upload</p>
           </div>
           <label className="inline-flex items-center gap-2 cursor-pointer select-none">
@@ -280,7 +301,7 @@ const UploadVideo = () => {
             value={formData.tags}
             onChange={handleChange}
             className="input-field"
-            placeholder="e.g., machine learning, AI, beginner"
+            placeholder="e.g., machine learning, basics, beginner"
           />
         </div>
 

@@ -18,6 +18,7 @@ const WatchVideo = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -50,6 +51,7 @@ const WatchVideo = () => {
 
   const handleSubmitFeedback = async (feedbackData) => {
     setSubmitting(true);
+    setSubmitError('');
     try {
       const res = await feedbackAPI.submit({
         videoId,
@@ -64,9 +66,16 @@ const WatchVideo = () => {
       setFeedbacks([newFeedback, ...feedbacks]);
       setHasSubmitted(true);
 
-      toast.success('Feedback submitted! AI has analyzed your response. 🤖');
+      toast.success('Feedback submitted! Your response was analyzed (rule-based sentiment analysis).');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit feedback');
+      const status = err.response?.status;
+      if (status === 409) {
+        const msg = err.message || 'You have already submitted feedback for this video.';
+        setSubmitError(msg);
+        setHasSubmitted(true);
+        return;
+      }
+      toast.error(err.message || 'Failed to submit feedback');
     } finally {
       setSubmitting(false);
     }
@@ -98,9 +107,7 @@ const WatchVideo = () => {
     );
   }
 
-  // Build video stream URL with token as query param (video element can't send auth headers)
-  const token = localStorage.getItem('authToken');
-  const streamUrl = video.filePath ? `/api/videos/stream/${videoId}?token=${token}` : null;
+  const streamUrl = video?.filePath ? videoAPI.getStreamUrl(videoId) : null;
 
   const signInterpreterUrl = (() => {
     if (!video.signLanguageInterpreter) return null;
@@ -179,6 +186,7 @@ const WatchVideo = () => {
             onSubmit={handleSubmitFeedback}
             loading={submitting}
             disabled={hasSubmitted}
+            errorMessage={submitError}
           />
         </div>
 

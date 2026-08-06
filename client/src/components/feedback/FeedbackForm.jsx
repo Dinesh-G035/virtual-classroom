@@ -3,7 +3,7 @@ import { FiStar, FiSend } from 'react-icons/fi';
 
 const emojis = ['😊', '😐', '😞', '👍', '👎', '🎉', '❤️'];
 
-const FeedbackForm = ({ onSubmit, loading, disabled }) => {
+const FeedbackForm = ({ onSubmit, loading, disabled, errorMessage }) => {
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -20,6 +20,12 @@ const FeedbackForm = ({ onSubmit, loading, disabled }) => {
       <h3 className="text-lg font-display font-semibold text-white mb-4 flex items-center gap-2">
         💬 Share Your Feedback
       </h3>
+
+      {errorMessage && (
+        <div className="mb-4 p-3 rounded-xl bg-red-500/5 border border-red-500/15">
+          <p className="text-sm text-red-400">{errorMessage}</p>
+        </div>
+      )}
 
       {/* Star Rating */}
       <div className="mb-4">

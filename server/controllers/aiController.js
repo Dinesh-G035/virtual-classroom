@@ -1,7 +1,7 @@
 const { generateVideoInsights, generateTeacherSummary } = require('../services/insightService');
 const Video = require('../models/Video');
 
-// @desc    Get AI analysis for all feedback on a video
+// @desc    Get aggregated analysis for all feedback on a video
 // @route   GET /api/ai/insights/:videoId
 // @access  Private (Teacher only)
 const getVideoInsights = async (req, res) => {

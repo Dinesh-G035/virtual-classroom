@@ -64,7 +64,7 @@ const VideoAnalytics = () => {
             }
           : prev
       );
-      toast.success('Captions generated');
+      toast.success('Auto-captions generated');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to generate captions');
     } finally {
@@ -181,7 +181,7 @@ const VideoAnalytics = () => {
       </Link>
 
       <h1 className="section-title">
-        <span className="gradient-text">AI Analytics</span> Dashboard
+        <span className="gradient-text">Feedback Analytics</span> Dashboard
       </h1>
 
       {/* Accessibility */}

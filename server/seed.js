@@ -152,7 +152,7 @@ const seedData = async (shouldExit = true) => {
       });
     }
 
-    console.log('💬 Created feedback with AI responses');
+    console.log('💬 Created feedback with analysis results');
     console.log('');
     console.log('✅ Seed complete!');
     

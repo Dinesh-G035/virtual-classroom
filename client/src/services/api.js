@@ -31,7 +31,7 @@ const request = async (endpoint, options = {}) => {
           window.location.href = '/login';
         }
       }
-      const error = new Error(data.message || 'Something went wrong');
+      const error = new Error(data.message || data.error || 'Something went wrong');
       error.response = { data, status: response.status };
       throw error;
     }
@@ -78,12 +78,10 @@ export const videoAPI = {
     return request(`/videos/${id}/sign-interpreter/upload`, { method: 'PUT', body: data });
   },
   getStreamUrl: (id) => {
-    const token = localStorage.getItem('authToken');
-    return `/api/videos/stream/${id}?token=${token}`;
+    return `/api/videos/stream/${id}`;
   },
   getSignInterpreterStreamUrl: (id) => {
-    const token = localStorage.getItem('authToken');
-    return `/api/videos/${id}/sign-interpreter/stream?token=${token}`;
+    return `/api/videos/${id}/sign-interpreter/stream`;
   },
 };
 
@@ -94,7 +92,7 @@ export const feedbackAPI = {
   getMyFeedback: () => request('/feedback/my-feedback'),
 };
 
-// AI APIs
+// Insight APIs (rule-based sentiment analysis + keyword detection + automated reply suggestions)
 export const aiAPI = {
   getInsights: (videoId) => request(`/ai/insights/${videoId}`),
   getTeacherSummary: () => request('/ai/teacher-summary'),

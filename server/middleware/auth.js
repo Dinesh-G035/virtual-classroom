@@ -8,7 +8,8 @@ const protect = async (req, res, next) => {
     token = req.headers.authorization.split(' ')[1];
   }
 
-  // Also allow token via query param (needed for video streaming where <video> can't send headers)
+  // Fallback only: allow token via query param for cases like a raw <video src="..."> request
+  // where browsers can't attach Authorization headers. Prefer Authorization: Bearer <token>.
   if (!token && req.query.token) {
     token = req.query.token;
   }

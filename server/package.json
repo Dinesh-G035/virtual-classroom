@@ -1,7 +1,7 @@
 {
   "name": "virtual-classroom-server",
   "version": "1.0.0",
-  "description": "Virtual Classroom System with AI-Based Video Feedback Analysis",
+  "description": "Virtual Classroom System with video feedback analysis",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

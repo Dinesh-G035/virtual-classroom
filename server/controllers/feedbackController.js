@@ -3,7 +3,7 @@ const AIResponse = require('../models/AIResponse');
 const { analyzeSentiment } = require('../services/sentimentService');
 const { generateSmartReply } = require('../services/smartReplyService');
 
-// @desc    Submit feedback (auto-triggers AI analysis)
+// @desc    Submit feedback (auto-triggers rule-based sentiment analysis + automated reply suggestions)
 // @route   POST /api/feedback
 // @access  Private (Student only)
 const submitFeedback = async (req, res) => {
@@ -11,12 +11,9 @@ const submitFeedback = async (req, res) => {
     const { videoId, comment, rating, emoji, timestamp } = req.body;
 
     // Check if student already gave feedback on this video
-    const existing = await Feedback.findOne({ student: req.user._id, video: videoId });
+    const existing = await Feedback.findOne({ student: req.user.id, video: videoId });
     if (existing) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already submitted feedback for this video',
-      });
+      return res.status(409).json({ error: 'You have already submitted feedback for this video.' });
     }
 
     // Create feedback
@@ -29,7 +26,7 @@ const submitFeedback = async (req, res) => {
       timestamp: timestamp || 0,
     });
 
-    // --- AI Analysis (runs automatically) ---
+    // --- Analysis (runs automatically) ---
     const sentimentResult = analyzeSentiment(comment);
     const smartReply = generateSmartReply(comment, sentimentResult.sentiment);
 
@@ -59,10 +56,7 @@ const submitFeedback = async (req, res) => {
   } catch (error) {
     console.error('Submit feedback error:', error);
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'You have already submitted feedback for this video',
-      });
+      return res.status(409).json({ error: 'You have already submitted feedback for this video.' });
     }
     res.status(500).json({ success: false, message: error.message });
   }
@@ -77,7 +71,7 @@ const getVideoFeedback = async (req, res) => {
       .populate('student', 'name email avatar')
       .sort({ createdAt: -1 });
 
-    // Get AI responses for each feedback
+    // Get analysis results for each feedback
     const feedbackIds = feedbacks.map((f) => f._id);
     const aiResponses = await AIResponse.find({ feedback: { $in: feedbackIds } });
 
@@ -111,7 +105,7 @@ const getMyFeedback = async (req, res) => {
       .populate('video', 'title thumbnailPath teacher')
       .sort({ createdAt: -1 });
 
-    // Get AI responses
+    // Get analysis results
     const feedbackIds = feedbacks.map((f) => f._id);
     const aiResponses = await AIResponse.find({ feedback: { $in: feedbackIds } });
 
