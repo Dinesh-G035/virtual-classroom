@@ -1,6 +1,6 @@
 # Virtual Classroom
 
-A full-stack virtual classroom app where teachers upload lecture videos and students watch and submit feedback (ratings, emojis, comments). The server performs rule-based sentiment analysis and keyword detection on feedback, generates automated reply suggestions, and aggregates analytics for teachers. The platform also includes accessibility features like auto-captions (from provided subtitle text) and an optional sign-language interpreter overlay while watching.
+A full-stack virtual classroom app where teachers upload lecture videos and students watch and submit feedback (ratings, emojis, comments). The server performs rule-based sentiment analysis and keyword detection on feedback, generates automated reply suggestions, and aggregates analytics for teachers. The platform also includes accessibility features like auto-captions (from provided subtitle text) and an optional sign language interpreter overlay while watching.
 
 ## Tech Stack
 
@@ -31,7 +31,7 @@ A full-stack virtual classroom app where teachers upload lecture videos and stud
 ### Prerequisites
 
 - Node.js v18+
-- MongoDB installed locally (or the app uses in-memory fallback automatically)
+- MongoDB installed locally
 
 ### Installation
 
