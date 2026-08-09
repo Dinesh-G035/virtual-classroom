@@ -1,7 +1,10 @@
 const Video = require('../models/Video');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 const path = require('path');
 const fs = require('fs');
 const CaptionService = require('../services/captionService');
+const { enqueueCaptionProcessing } = require('../services/captionQueue');
 
 // @desc    Upload a video
 // @route   POST /api/videos
@@ -13,6 +16,10 @@ const uploadVideo = async (req, res) => {
     }
 
     const { title, description, subtitles, signLanguageUrl, signLanguageInterpreter, tags } = req.body;
+
+    const autoCaptions = String(req.body.autoCaptions ?? 'true').toLowerCase() !== 'false';
+    const provider = req.body.captionProvider || process.env.CAPTION_PROVIDER || 'auto';
+    const resolvedProvider = autoCaptions ? CaptionService.resolveProvider(provider) : 'none';
 
     const video = await Video.create({
       title,
@@ -26,26 +33,47 @@ const uploadVideo = async (req, res) => {
       signLanguageInterpreter: signLanguageInterpreter || '',
       teacher: req.user._id,
       tags: tags ? tags.split(',').map((t) => t.trim()) : [],
+      captionProvider: resolvedProvider,
+      processingStatus: autoCaptions ? 'queued' : 'pending',
     });
-
-    // Auto-captions by default (disable with autoCaptions=false)
-    const autoCaptions = String(req.body.autoCaptions ?? 'true').toLowerCase() !== 'false';
-    if (autoCaptions) {
-      try {
-        const provider = req.body.captionProvider || process.env.CAPTION_PROVIDER || 'auto';
-        const result = await CaptionService.generateCaptions(video.filePath, provider, subtitles || '');
-        video.captions = result.captions;
-        video.captionsGenerated = true;
-        video.captionProvider = result.provider;
-        await video.save();
-      } catch (err) {
-        console.warn('Auto caption generation failed, continuing upload:', err.message || err);
-      }
-    }
 
     await video.populate('teacher', 'name email');
 
-    res.status(201).json({ success: true, data: video });
+    if (autoCaptions) {
+      try {
+        enqueueCaptionProcessing(video._id);
+      } catch (err) {
+        console.warn('Caption queue scheduling failed:', err.message || err);
+        video.processingStatus = 'failed';
+        video.processingError = 'Caption queue scheduling failed';
+        await video.save();
+      }
+    }
+
+    // Every student can see a newly uploaded lecture, so give each one an
+    // individual, dismissible notification.
+    try {
+      const students = await User.find({ role: 'student' }).select('_id');
+      if (students.length) {
+        await Notification.insertMany(students.map((student) => ({
+          recipient: student._id,
+          actor: req.user._id,
+          video: video._id,
+          type: 'video_uploaded',
+          title: 'New lecture available',
+          message: `${video.title} was uploaded by ${req.user.name}.`,
+        })));
+      }
+    } catch (notificationError) {
+      // A notification failure should never make a completed upload fail.
+      console.warn('Could not create upload notifications:', notificationError.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      data: video,
+      message: autoCaptions ? 'Video saved successfully. Caption generation is starting in the background.' : 'Video saved successfully.',
+    });
   } catch (error) {
     console.error('Upload video error:', error);
     res.status(500).json({ success: false, message: error.message });
@@ -285,6 +313,8 @@ const getVideoCaptions = async (req, res) => {
         captions: video.captions || [],
         captionsGenerated: video.captionsGenerated || false,
         captionProvider: video.captionProvider || 'none',
+        processingStatus: video.processingStatus || 'pending',
+        processingError: video.processingError || '',
       },
     });
   } catch (error) {

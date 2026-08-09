@@ -62,6 +62,23 @@ const videoSchema = new mongoose.Schema(
       enum: ['openai', 'google', 'mock', 'manual', 'none'],
       default: 'none',
     },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'queued', 'processing', 'completed', 'failed'],
+      default: 'pending',
+    },
+    processingError: {
+      type: String,
+      default: '',
+    },
+    processingStartedAt: {
+      type: Date,
+      default: null,
+    },
+    processingCompletedAt: {
+      type: Date,
+      default: null,
+    },
     teacher: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

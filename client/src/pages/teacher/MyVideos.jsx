@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { videoAPI } from '../../services/api';
 import VideoCard from '../../components/video/VideoCard';
-import { FiVideo, FiTrash2 } from 'react-icons/fi';
+import { FiVideo, FiTrash2, FiLoader, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
 import { useToast } from '../../components/common/Toast';
 import { Link } from 'react-router-dom';
 
@@ -9,15 +9,46 @@ const MyVideos = () => {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
+  const previousStatusesRef = useRef({});
 
   useEffect(() => {
     fetchVideos();
   }, []);
 
+  useEffect(() => {
+    if (!videos.length) return;
+
+    const interval = setInterval(() => {
+      fetchVideos();
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [videos.length]);
+
   const fetchVideos = async () => {
     try {
       const res = await videoAPI.getMyVideos();
-      setVideos(res.data.data);
+      const nextVideos = res.data.data || [];
+      const completedVideos = nextVideos.filter((video) => {
+        const previousStatus = previousStatusesRef.current[video._id];
+        return previousStatus !== 'completed' && video.processingStatus === 'completed';
+      });
+      const failedVideos = nextVideos.filter((video) => {
+        const previousStatus = previousStatusesRef.current[video._id];
+        return previousStatus !== 'failed' && video.processingStatus === 'failed';
+      });
+
+      if (completedVideos.length > 0) {
+        const title = completedVideos[0].title || 'Your video';
+        toast.success(`${title} is ready. Captions have finished processing.`);
+      }
+      if (failedVideos.length > 0) {
+        const title = failedVideos[0].title || 'Your video';
+        toast.error(`${title} could not be processed. Please try again.`);
+      }
+
+      previousStatusesRef.current = Object.fromEntries(nextVideos.map((video) => [video._id, video.processingStatus]));
+      setVideos(nextVideos);
     } catch (err) {
       toast.error('Failed to load videos');
     } finally {
@@ -61,6 +92,28 @@ const MyVideos = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {videos.map((video) => (
             <div key={video._id} className="relative group">
+              <div className="mb-2 flex items-center gap-2 text-xs">
+                {video.processingStatus === 'completed' && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-emerald-400">
+                    <FiCheckCircle className="w-3.5 h-3.5" /> Captions ready
+                  </span>
+                )}
+                {video.processingStatus === 'processing' && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-1 text-amber-300">
+                    <FiLoader className="w-3.5 h-3.5 animate-spin" /> Generating captions...
+                  </span>
+                )}
+                {video.processingStatus === 'failed' && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-1 text-red-400">
+                    <FiAlertCircle className="w-3.5 h-3.5" /> Processing failed
+                  </span>
+                )}
+                {video.processingStatus === 'queued' && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-1 text-sky-300">
+                    <FiLoader className="w-3.5 h-3.5 animate-spin" /> Queued
+                  </span>
+                )}
+              </div>
               <VideoCard video={video} />
               <button
                 onClick={(e) => { e.stopPropagation(); handleDelete(video._id); }}

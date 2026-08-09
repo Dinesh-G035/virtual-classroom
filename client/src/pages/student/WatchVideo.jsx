@@ -32,7 +32,12 @@ const WatchVideo = () => {
         setFeedbacks(feedbackRes.data.data);
 
         const cap = captionsRes?.data?.data?.captions;
-        if (Array.isArray(cap)) setCaptions(cap);
+        const processingStatus = captionsRes?.data?.data?.processingStatus;
+        if (Array.isArray(cap) && cap.length > 0 && processingStatus === 'completed') {
+          setCaptions(cap);
+        } else {
+          setCaptions([]);
+        }
 
         // Check if current user already submitted feedback
         const existing = feedbackRes.data.data.find(
@@ -48,6 +53,28 @@ const WatchVideo = () => {
     };
     fetchData();
   }, [videoId]);
+
+  useEffect(() => {
+    if (!video?.processingStatus || video.processingStatus === 'completed' || video.processingStatus === 'failed') {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const captionsRes = await videoAPI.getCaptions(videoId).catch(() => null);
+        const cap = captionsRes?.data?.data?.captions;
+        const processingStatus = captionsRes?.data?.data?.processingStatus;
+        if (Array.isArray(cap) && cap.length > 0 && processingStatus === 'completed') {
+          setCaptions(cap);
+          setVideo((prev) => prev ? { ...prev, processingStatus: 'completed' } : prev);
+        }
+      } catch (err) {
+        console.error('Polling captions error:', err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [video?.processingStatus, videoId]);
 
   const handleSubmitFeedback = async (feedbackData) => {
     setSubmitting(true);
@@ -108,6 +135,7 @@ const WatchVideo = () => {
   }
 
   const streamUrl = video?.filePath ? videoAPI.getStreamUrl(videoId) : null;
+  const captionsProcessing = !!video?.processingStatus && video.processingStatus !== 'completed';
 
   const signInterpreterUrl = (() => {
     if (!video.signLanguageInterpreter) return null;
@@ -134,6 +162,12 @@ const WatchVideo = () => {
         signInterpreterUrl={signInterpreterUrl}
         title={video.title}
       />
+
+      {captionsProcessing && (
+        <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          Captions are still being generated. Students will see them once processing finishes.
+        </div>
+      )}
 
       {/* Video Info */}
       <div className="mt-6 mb-8">

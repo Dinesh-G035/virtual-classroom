@@ -92,6 +92,13 @@ export const feedbackAPI = {
   getMyFeedback: () => request('/feedback/my-feedback'),
 };
 
+// Notification APIs
+export const notificationAPI = {
+  getAll: (limit = 10) => request(`/notifications?limit=${limit}`),
+  markRead: (id) => request(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllRead: () => request('/notifications/read-all', { method: 'PATCH' }),
+};
+
 // Insight APIs (rule-based sentiment analysis + keyword detection + automated reply suggestions)
 export const aiAPI = {
   getInsights: (videoId) => request(`/ai/insights/${videoId}`),

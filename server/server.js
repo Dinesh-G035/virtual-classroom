@@ -11,6 +11,7 @@ const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

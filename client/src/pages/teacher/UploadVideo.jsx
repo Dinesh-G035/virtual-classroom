@@ -4,7 +4,8 @@ import { videoAPI } from '../../services/api';
 import { useToast } from '../../components/common/Toast';
 import { FiUploadCloud, FiX, FiFile, FiTag, FiAlignLeft, FiType, FiLink } from 'react-icons/fi';
 
-const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
+const MAX_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
 
 const UploadVideo = () => {
   const [formData, setFormData] = useState({
@@ -38,13 +39,33 @@ const UploadVideo = () => {
     }
 
     if (nextFile.size > MAX_UPLOAD_BYTES) {
-      toast.error('File too large. Maximum upload size is 500MB.');
+      toast.error('File too large. Maximum upload size is 2GB.');
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
-    setFile(nextFile);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = URL.createObjectURL(nextFile);
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      if (video.duration > MAX_DURATION_SECONDS) {
+        toast.error('Video duration must be 2 hours or less.');
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      setFile(nextFile);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      toast.error('Unable to read the selected video file.');
+      setFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
   };
 
   const handleChange = (e) => {
@@ -71,7 +92,7 @@ const UploadVideo = () => {
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error('File too large. Maximum upload size is 500MB.');
+      toast.error('File too large. Maximum upload size is 2GB.');
       return;
     }
     if (!formData.title.trim()) {
@@ -109,7 +130,7 @@ const UploadVideo = () => {
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      toast.success('Video uploaded successfully! 🎉');
+      toast.success('Video uploaded successfully. Caption generation is starting in the background.');
       setTimeout(() => navigate('/teacher/my-videos'), 1000);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Upload failed');
@@ -169,7 +190,7 @@ const UploadVideo = () => {
               <p className="text-sm font-medium text-white">
                 {dragOver ? 'Drop your video here!' : 'Drag & drop your video here'}
               </p>
-              <p className="text-xs text-surface-400 mt-2">or click to browse • MP4, WebM, OGG • Max 500MB</p>
+              <p className="text-xs text-surface-400 mt-2">or click to browse • MP4, WebM, OGG • Up to 2GB and 2 hours</p>
             </>
           )}
         </div>

@@ -1,5 +1,7 @@
 const Feedback = require('../models/Feedback');
 const AIResponse = require('../models/AIResponse');
+const Video = require('../models/Video');
+const Notification = require('../models/Notification');
 const { analyzeSentiment } = require('../services/sentimentService');
 const { generateSmartReply } = require('../services/smartReplyService');
 
@@ -40,6 +42,24 @@ const submitFeedback = async (req, res) => {
 
     // Populate student info
     await feedback.populate('student', 'name email avatar');
+
+    // Notify the teacher who owns the video about the new feedback.
+    try {
+      const video = await Video.findById(videoId).select('title teacher');
+      if (video) {
+        await Notification.create({
+          recipient: video.teacher,
+          actor: req.user._id,
+          video: video._id,
+          type: 'feedback_received',
+          title: 'New feedback received',
+          message: `${req.user.name} left feedback on ${video.title}.`,
+        });
+      }
+    } catch (notificationError) {
+      // Feedback is still valid if the optional notification cannot be saved.
+      console.warn('Could not create feedback notification:', notificationError.message);
+    }
 
     res.status(201).json({
       success: true,

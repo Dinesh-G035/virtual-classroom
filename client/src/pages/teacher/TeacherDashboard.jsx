@@ -29,6 +29,8 @@ const TeacherDashboard = () => {
     fetchData();
   }, []);
 
+  const processingVideos = videos.filter((video) => ['queued', 'processing'].includes(video.processingStatus));
+
   const stats = [
     {
       label: 'Total Videos',
@@ -162,6 +164,12 @@ const TeacherDashboard = () => {
           <FiArrowRight className="w-5 h-5 text-surface-500 group-hover:text-primary-400 group-hover:translate-x-1 transition-all" />
         </Link>
       </div>
+
+      {processingVideos.length > 0 && (
+        <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          Generating captions... Your videos are being processed in the background.
+        </div>
+      )}
 
       {/* Recent videos */}
       <div>
