@@ -37,7 +37,7 @@ connectDB().then(async () => {
 // Middleware
 
 app.use(cors({
-  origin: 'https://virtual-classroom-three-orpin.vercel.app',
+  origin: 'virtual-classroom-1sfv.vercel.app',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
