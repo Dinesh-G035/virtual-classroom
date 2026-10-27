@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://virtual-classroom-k7xe.onrender.com';
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('authToken');
