@@ -36,7 +36,7 @@ connectDB().then(async () => {
 
 // Middleware
 app.use(cors({
-  origin: 'https://virtual-classroom-five-rho.vercel.app',
+  origin: 'virtual-classroom-three-orpin.vercel.app',
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
